@@ -7,20 +7,98 @@
 
 import UIKit
 import CoreData
+import UserNotifications
+import CleverTapSDK
 
 @main
-class AppDelegate: UIResponder, UIApplicationDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    
+    
+    var window: UIWindow?
 
 
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        
+        // register for push notifications
+        registerForPush()
+    
+        // Configure and init the default shared CleverTap instance (add CleverTap Account ID and Account Token in your .plist file)
+        CleverTap.autoIntegrate()
+        CleverTap.setDebugLevel(CleverTapLogLevel.debug.rawValue)
+        CleverTap.sharedInstance()?.enableDeviceNetworkInfoReporting(true)
+        
         // Override point for customization after application launch.
         return true
     }
+    
+    func registerForPush()
+    {
+        // Register for Push notifications
+        UNUserNotificationCenter.current().delegate = self
+        // request Permissions
+        UNUserNotificationCenter.current().requestAuthorization(options: [.sound, .badge, .alert], completionHandler: {granted, error in
+                if granted {
+                    DispatchQueue.main.async {
+                        UIApplication.shared.registerForRemoteNotifications()
+                    }
+                }
+            })
+    }
+    
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+            NSLog("%@: registered for remote notifications: %@", self.description, deviceToken.description)
+    }
+    
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+            NSLog("%@: failed to register for remote notifications: %@", self.description, error.localizedDescription)
+    }
+    
+    
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                    didReceive response: UNNotificationResponse,
+                                    withCompletionHandler completionHandler: @escaping () -> Void) {
+            
+            NSLog("%@: did receive notification response: %@", self.description, response.notification.request.content.userInfo)
+            completionHandler()
+    }
+        
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                    willPresent notification: UNNotification,
+                                    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+            
+            NSLog("%@: will present notification: %@", self.description, notification.request.content.userInfo)
+            //CleverTap.sharedInstance()?.recordNotificationViewedEvent(withData: notification.request.content.userInfo)
+            completionHandler([.badge, .sound, .alert])
+    }
+    
+    
+    //Handling Deeplinks
+    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+            NSLog("%@: open  url: %@ with options: %@", self.description, url.absoluteString, options)
+            print("url: \(url)")
+            print("host: \(url.host!)")
+            print("path: \(url.path)")
+        
+            let urlPath :  String = url.path as String
+            let mainStoryboard: UIStoryboard = UIStoryboard(name: "Main", bundle: nil)
+        
+            //window = UIWindow()
+        
+            if(urlPath == "/inner")
+            {
+                let innerPage : InnerPageViewController = mainStoryboard.instantiateViewController(withIdentifier: "InnerPageViewController") as! InnerPageViewController
+                self.window!.rootViewController = innerPage
+            }
+        self.window?.makeKeyAndVisible()
+            return true
+        }
+    
+    
 
     // MARK: UISceneSession Lifecycle
 
-    func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
+    /*func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
         // Called when a new scene session is being created.
         // Use this method to select a configuration to create the new scene with.
         return UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
@@ -75,7 +153,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 fatalError("Unresolved error \(nserror), \(nserror.userInfo)")
             }
         }
-    }
+    }*/
 
 }
 
